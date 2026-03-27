@@ -1,0 +1,205 @@
+{
+  "capacitor_banks": [],
+  "electrical_grid": {},
+  "transformers": [],
+  "distribution_lines": [],
+  "substations": [],
+  "battery_banks": [],
+  "photovoltaic_panels": [],
+  "power_converters": [],
+  "district_system": {
+    "fifth_generation": {
+      "horizontal_piping_parameters": {
+        "pressure_drop_per_meter": 300,
+        "rho_cp": 2139000.0,
+        "roughness": 1e-06,
+        "diameter_ratio": 11.0,
+        "insulation_conductivity": 3.0,
+        "hydraulic_diameter_autosized": true,
+        "buried_depth": 1.5,
+        "insulation_thickness": 0.2,
+        "hydraulic_diameter": 0.0935181818181818
+      },
+      "central_pump_parameters": {
+        "pump_design_head_autosized": true,
+        "pump_flow_rate_autosized": true,
+        "pump_design_head": 74181.23307423508,
+        "pump_flow_rate": 0.008
+      },
+      "ghe_parameters": {
+        "grout": {
+          "conductivity": 1.0,
+          "rho_cp": 3901000.0
+        },
+        "ghe_dir": "tests/assets/small_ghe/ghe_dir",
+        "simulation": {
+          "num_months": 240
+        },
+        "fluid": {
+          "temperature": 20.0,
+          "concentration_percent": 0.25,
+          "fluid_name": "PropyleneGlycol"
+        },
+        "version": "1.0",
+        "design": {
+          "flow_rate": 0.2,
+          "flow_type": "borehole",
+          "min_eft": -3.0,
+          "method": "AREAPROPORTIONAL",
+          "max_eft": 35.0
+        },
+        "pipe": {
+          "rho_cp": 1542000.0,
+          "roughness": 1e-06,
+          "shank_spacing": 0.0323,
+          "conductivity": 0.4,
+          "outer_diameter": 0.0266,
+          "arrangement": "singleutube",
+          "inner_diameter": 0.0216
+        },
+        "borehole": {
+          "buried_depth": 2.0,
+          "diameter": 0.15
+        },
+        "borefields": [
+          {
+            "autosized_birectangle_constrained_borefield": {
+              "min_height": 60.0,
+              "b_min": 3.0,
+              "max_height": 300.0,
+              "b_max_x": 50.0,
+              "b_max_y": 50.0,
+              "borehole_length": 297.35688429306015,
+              "number_of_boreholes": 40
+            },
+            "ghe_id": "District GHE Loop_GHE_0"
+          }
+        ]
+      },
+      "soil": {
+        "undisturbed_temp": 8.93912100456623,
+        "conductivity": 2.3,
+        "rho_cp": 2343500.0
+      }
+    }
+  },
+  "wind_turbines": [],
+  "buildings": [
+    {
+      "fifth_gen_ets_parameters": {
+        "hot_water_supply_temp": 50.0,
+        "ets_pump_flow_rate": 0.0005,
+        "heating_water_supply_temp": 40.0,
+        "ets_pump_head": 10000.0,
+        "chilled_water_supply_temp": 5.0,
+        "cop_heat_pump_hot_water": 2.5,
+        "fan_design_head": 150,
+        "cop_heat_pump_cooling": 3.5,
+        "fan_design_flow_rate": 0.25,
+        "cop_heat_pump_heating": 3.0
+      },
+      "battery_banks": [],
+      "photovoltaic_panels": [],
+      "ets_model": "Fifth Gen Heat Pump",
+      "geojson_id": "Office_1",
+      "diesel_generators": [],
+      "load_model_parameters": {
+        "time_series": {
+          "delta_temp_air_cooling": 10,
+          "filepath": "C:\\Users\\Chris\\simulation\\DES_G5_Example\\run\\honeybee_scenario\\Office_1\\002_export_modelica_loads\\modelica.mos",
+          "temp_chw_return": 12,
+          "temp_hw_supply": 40,
+          "has_liquid_cooling": true,
+          "delta_temp_air_heating": 18,
+          "has_liquid_heating": true,
+          "max_electrical_load": 1671700000,
+          "temp_chw_supply": 7,
+          "temp_hw_return": 35,
+          "temp_setpoint_cooling": 24,
+          "temp_setpoint_heating": 20,
+          "has_electric_cooling": false,
+          "has_electric_heating": false
+        }
+      },
+      "load_model": "time_series"
+    },
+    {
+      "fifth_gen_ets_parameters": {
+        "hot_water_supply_temp": 50.0,
+        "ets_pump_flow_rate": 0.0005,
+        "heating_water_supply_temp": 40.0,
+        "ets_pump_head": 10000.0,
+        "chilled_water_supply_temp": 5.0,
+        "cop_heat_pump_hot_water": 2.5,
+        "fan_design_head": 150,
+        "cop_heat_pump_cooling": 3.5,
+        "fan_design_flow_rate": 0.25,
+        "cop_heat_pump_heating": 3.0
+      },
+      "battery_banks": [],
+      "photovoltaic_panels": [],
+      "ets_model": "Fifth Gen Heat Pump",
+      "geojson_id": "Office_2",
+      "diesel_generators": [],
+      "load_model_parameters": {
+        "time_series": {
+          "delta_temp_air_cooling": 10,
+          "filepath": "C:\\Users\\Chris\\simulation\\DES_G5_Example\\run\\honeybee_scenario\\Office_2\\002_export_modelica_loads\\modelica.mos",
+          "temp_chw_return": 12,
+          "temp_hw_supply": 40,
+          "has_liquid_cooling": true,
+          "delta_temp_air_heating": 18,
+          "has_liquid_heating": true,
+          "max_electrical_load": 1985590000,
+          "temp_chw_supply": 7,
+          "temp_hw_return": 35,
+          "temp_setpoint_cooling": 24,
+          "temp_setpoint_heating": 20,
+          "has_electric_cooling": false,
+          "has_electric_heating": false
+        }
+      },
+      "load_model": "time_series"
+    },
+    {
+      "fifth_gen_ets_parameters": {
+        "hot_water_supply_temp": 50.0,
+        "ets_pump_flow_rate": 0.0005,
+        "heating_water_supply_temp": 40.0,
+        "ets_pump_head": 10000.0,
+        "chilled_water_supply_temp": 5.0,
+        "cop_heat_pump_hot_water": 2.5,
+        "fan_design_head": 150,
+        "cop_heat_pump_cooling": 3.5,
+        "fan_design_flow_rate": 0.25,
+        "cop_heat_pump_heating": 3.0
+      },
+      "battery_banks": [],
+      "photovoltaic_panels": [],
+      "ets_model": "Fifth Gen Heat Pump",
+      "geojson_id": "Residential_1",
+      "diesel_generators": [],
+      "load_model_parameters": {
+        "time_series": {
+          "delta_temp_air_cooling": 10,
+          "filepath": "C:\\Users\\Chris\\simulation\\DES_G5_Example\\run\\honeybee_scenario\\Residential_1\\002_export_modelica_loads\\modelica.mos",
+          "temp_chw_return": 12,
+          "temp_hw_supply": 40,
+          "has_liquid_cooling": true,
+          "delta_temp_air_heating": 18,
+          "has_liquid_heating": true,
+          "max_electrical_load": 774542000,
+          "temp_chw_supply": 7,
+          "temp_hw_return": 35,
+          "temp_setpoint_cooling": 24,
+          "temp_setpoint_heating": 20,
+          "has_electric_cooling": false,
+          "has_electric_heating": false
+        }
+      },
+      "load_model": "time_series"
+    }
+  ],
+  "combined_heat_and_power_systems": [],
+  "weather": "C:\\Users\\Chris\\simulation\\DES_G5_Example\\USA_NY_Buffalo-Greater.Buffalo.Intl.AP.725280_TMY.mos"
+}
