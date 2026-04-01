@@ -76,6 +76,11 @@ def system_to_osm(
     """
     # initialize the OpenStudio model that will hold everything
     os_model = OSModel()
+
+    # load the system parameter file to a dictionary and get the weather file
+    with open(system_file) as sf:
+        sys_dict = json.load(sf)
+
     # generate default simulation parameters
     if sim_par_json is None:
         sim_par = SimulationParameter()
@@ -85,21 +90,16 @@ def system_to_osm(
             data = json.load(json_file)
         sim_par = SimulationParameter.from_dict(data)
 
-    # load the system parameter file to a dictionary and get the weather file
-    with open(system_file) as sf:
-        sys_dict = json.load(sf)
-    epw_file = sys_dict['weather'].replace('.mos', '.epw')
-
     # set two design days using the EPW (to be coordinated with coincident peak load)
+    epw_file = sys_dict['weather'].replace('.mos', '.epw')
+    assert os.path.isfile(epw_file), 'The weather file path referenced in the ' \
+        'system parameter file was not found: {}'.format(epw_file)
     if len(sim_par.sizing_parameter.design_days) == 0:
-        assert os.path.isfile(epw_file), 'The weather file path found in the ' \
-            'system parameter file was not found: {}'.format(epw_file)
         epw_obj = EPW(epw_file)
         des_days = [epw_obj.approximate_design_day('WinterDesignDay'),
                     epw_obj.approximate_design_day('SummerDesignDay')]
         sim_par.sizing_parameter.design_days = des_days
-        set_cz = True if sim_par.sizing_parameter.climate_zone is None else False
-        assign_epw_to_model(epw_file, os_model, set_cz)
+    assign_epw_to_model(epw_file, os_model)
 
     # translate the simulation parameter and model to an OpenStudio Model
     simulation_parameter_to_openstudio(sim_par, os_model)

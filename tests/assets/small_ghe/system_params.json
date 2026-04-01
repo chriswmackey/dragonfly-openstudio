@@ -201,5 +201,5 @@
     }
   ],
   "combined_heat_and_power_systems": [],
-  "weather": "C:\\Users\\Chris\\simulation\\DES_G5_Example\\USA_NY_Buffalo-Greater.Buffalo.Intl.AP.725280_TMY.mos"
+  "weather": "tests/assets/small_ghe/USA_NY_Buffalo-Greater.Buffalo.Intl.AP.725280_TMY.mos"
 }

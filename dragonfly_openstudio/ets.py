@@ -4,10 +4,11 @@ from __future__ import division
 
 from honeybee_energy.schedule.fixedinterval import ScheduleFixedInterval
 from honeybee_energy.lib.scheduletypelimits import fractional, power
-
 from honeybee_openstudio.openstudio import openstudio_model
 from honeybee_openstudio.schedule import schedule_fixed_interval_to_openstudio
 from honeybee_openstudio.hvac.standards.schedule import create_constant_schedule_ruleset
+
+from .util import modelica_loads
 
 
 def heat_pump_ets_to_openstudio(building_dict, hp_loop, os_model):
@@ -27,26 +28,7 @@ def heat_pump_ets_to_openstudio(building_dict, hp_loop, os_model):
 
     # GET LOADS
     # parse the loads from the .mos file
-    load_file = load_dict['filepath']
-    peak_heating, peak_cooling, peak_shw = 0, 0, 0
-    seconds, cooling, heating, shw = [], [], [], []
-    timeseries_started = False
-    with open(load_file, 'r') as lf:
-        for line in lf:
-            if timeseries_started:
-                loads = line.strip().split(';')
-                seconds.append(int(loads[0]))
-                cooling.append(float(loads[1]))
-                heating.append(float(loads[2]))
-                shw.append(float(loads[3]))
-            elif line.startswith('double tab'):
-                timeseries_started = True
-    # check the timestep and get the peak values
-    timestep = int(3600 / (seconds[1] - seconds[0]))
-    assert len(cooling) == 8760 * timestep, 'The building loads simulation was '\
-        'not for the full typical year and was for {} days.\nThe loads must be ' \
-        'simulated for a full typical year to use them for DES generation.'.format(
-            len(cooling) / (timestep * 24))
+    _, cooling, heating, shw = modelica_loads(load_dict['filepath'])
     peak_cooling = min(cooling)
     peak_cooling = peak_cooling if peak_cooling < 0 else 0
     peak_heating = max(heating)
@@ -130,13 +112,13 @@ def building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_pressure=None):
     chw_stpt_manager.addToNode(chw_loop.supplyOutletNode())
 
     # add a pump for the loop
-    hw_pump = openstudio_model.PumpVariableSpeed(os_model)
-    hw_pump.setName('{} Pump'.format(chw_loop.nameString()))
+    chw_pump = openstudio_model.PumpVariableSpeed(os_model)
+    chw_pump.setName('{} Pump'.format(chw_loop.nameString()))
     if pump_pressure is not None:
-        hw_pump.setRatedPumpHead(pump_pressure)
-    hw_pump.setMotorEfficiency(0.9)
-    hw_pump.setPumpControlType('Intermittent')
-    hw_pump.addToNode(chw_loop.supplyInletNode())
+        chw_pump.setRatedPumpHead(pump_pressure)
+    chw_pump.setMotorEfficiency(0.9)
+    chw_pump.setPumpControlType('Intermittent')
+    chw_pump.addToNode(chw_loop.supplyInletNode())
 
     # set the cooling load schedule
     timestep = len(cooling) / 8760
@@ -152,6 +134,7 @@ def building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_pressure=None):
     flow_sch_id = '{} Cooling Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
+    chw_pump.setRatedFlowRate(peak_flow)
 
     # add the building loads to the supply side
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
@@ -207,6 +190,7 @@ def building_hw_loop(bldg_id, heating, hw_temp, os_model, pump_pressure=None):
     flow_sch_id = '{} Heating Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
+    hw_pump.setRatedFlowRate(peak_flow)
 
     # add the building loads to the supply side
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
@@ -240,13 +224,13 @@ def building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_pressure=None):
     shw_stpt_manager.addToNode(shw_loop.supplyOutletNode())
 
     # add a pump for the loop
-    hw_pump = openstudio_model.PumpVariableSpeed(os_model)
-    hw_pump.setName('{} Pump'.format(shw_loop.nameString()))
+    shw_pump = openstudio_model.PumpVariableSpeed(os_model)
+    shw_pump.setName('{} Pump'.format(shw_loop.nameString()))
     if pump_pressure is not None:
-        hw_pump.setRatedPumpHead(pump_pressure)
-    hw_pump.setMotorEfficiency(0.9)
-    hw_pump.setPumpControlType('Intermittent')
-    hw_pump.addToNode(shw_loop.supplyInletNode())
+        shw_pump.setRatedPumpHead(pump_pressure)
+    shw_pump.setMotorEfficiency(0.9)
+    shw_pump.setPumpControlType('Intermittent')
+    shw_pump.addToNode(shw_loop.supplyInletNode())
 
     # set the shw load schedule
     timestep = len(shw) / 8760
@@ -262,6 +246,7 @@ def building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_pressure=None):
     flow_sch_id = '{} SHW Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
+    shw_pump.setRatedFlowRate(peak_flow)
 
     # add the building loads to the supply side
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
