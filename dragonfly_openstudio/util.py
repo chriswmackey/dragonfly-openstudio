@@ -118,6 +118,7 @@ def coincident_peak_design_days(sys_dict):
     cooling_day = epw_obj.approximate_design_day('SummerDesignDay')
     heating_day = epw_obj.approximate_design_day('WinterDesignDay')
     shw_day = heating_day.duplicate()
+    shw_day.name = shw_day.name.replace('Heating', 'SHW')
     cooling_day.sky_condition.date = cooling_time.date
     heating_day.sky_condition.date = heating_time.date
     shw_day.sky_condition.date = shw_time.date

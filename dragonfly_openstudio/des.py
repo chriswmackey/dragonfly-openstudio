@@ -37,10 +37,15 @@ def ghe_des_to_openstudio(des_dict, os_model):
 
     # ground hx loop sizing and controls
     ground_hx_loop.setMinimumLoopTemperature(design['min_eft'])
-    ground_hx_loop.setMaximumLoopTemperature(design['max_eft'])
+    ground_hx_loop.setMaximumLoopTemperature(design['max_eft'] + 10)  # add 10C
     sizing_plant = ground_hx_loop.sizingPlant()
     sizing_plant.setLoopType('Condenser')
+    sizing_plant.setDesignLoopExitTemperature(30.0)
+    sizing_plant.setLoopDesignTemperatureDifference(11.0)
     sizing_plant.setSizingOption('Coincident')
+    hp_high_temp_sch = create_constant_schedule_ruleset(
+        os_model, design['max_eft'], schedule_type_limit='Temperature',
+        name='{} High Temp - {}C'.format(loop_name, int(design['max_eft'])))
 
     # create the central pump
     pump = openstudio_model.PumpVariableSpeed(os_model)
@@ -51,8 +56,8 @@ def ghe_des_to_openstudio(des_dict, os_model):
     pump.setPumpControlType('Intermittent')
     pump.addToNode(ground_hx_loop.supplyInletNode())
 
-    # schedule to actuate ground HX outlet temperature
-    loop_target_temp = 24.0  # target temperature for the ground loop
+    # schedule to establish a target temperature for the loop
+    loop_target_temp = 24.0  # target temperature
     hx_temp_sch = openstudio_model.ScheduleConstant(os_model)
     hx_temp_sch.setName('Ground HX Target Temp - {}C'.format(loop_target_temp))
     hx_temp_sch.setValue(loop_target_temp)
@@ -60,7 +65,29 @@ def ghe_des_to_openstudio(des_dict, os_model):
     loop_stpt_manager.setName('{} Supply Outlet Setpoint'.format(loop_name))
     loop_stpt_manager.addToNode(ground_hx_loop.supplyOutletNode())
 
-    # TODO: add a PipeOutdoor using the lengths of connectors to account for losses
+    # add a cooling tower to prevent the loop from overheating during peak
+    cooling_equipment_stpt_manager = \
+        openstudio_model.SetpointManagerScheduled(os_model, hp_high_temp_sch)
+    cooling_equipment = openstudio_model.CoolingTowerVariableSpeed(os_model)
+    cooling_equipment.setName('{} CoolingTowerVariableSpeed'.format(loop_name))
+    ground_hx_loop.addSupplyBranchForComponent(cooling_equipment)
+    cooling_equipment_stpt_manager.setName('{} Cooling Tower Setpoint'.format(loop_name))
+    equip_out_node = cooling_equipment.outletModelObject().get().to_Node().get()
+    cooling_equipment_stpt_manager.addToNode(equip_out_node)
+
+    # add ground loop pipes
+    # TODO: Consider using PipeOutdoor with lengths derived from thermal connectors
+    supply_outlet_pipe = openstudio_model.PipeAdiabatic(os_model)
+    supply_outlet_pipe.setName('{} Supply Outlet'.format(loop_name))
+    supply_outlet_pipe.addToNode(ground_hx_loop.supplyOutletNode())
+
+    demand_inlet_pipe = openstudio_model.PipeAdiabatic(os_model)
+    demand_inlet_pipe.setName('{} Demand Inlet'.format(loop_name))
+    demand_inlet_pipe.addToNode(ground_hx_loop.demandInletNode())
+
+    demand_outlet_pipe = openstudio_model.PipeAdiabatic(os_model)
+    demand_outlet_pipe.setName('{} Demand Outlet'.format(loop_name))
+    demand_outlet_pipe.addToNode(ground_hx_loop.demandOutletNode())
 
     # add the ground heat exchangers
     ghe_dir = des_dict['ghe_parameters']['ghe_dir']
@@ -89,6 +116,7 @@ def ghe_des_to_openstudio(des_dict, os_model):
             continue  # not a GHE type that can be translated yet
         design_flow = design['flow_rate'] * borehole_count \
             if design['flow_type'] == 'borehole' else design['flow_rate']
+        design_flow = design_flow / 1000  # convert L/s to m3/s
         ground_hx.setDesignFlowRate(design_flow)
         ground_hx.setNumberofBoreHoles(borehole_count)
         ground_hx.setBoreHoleTopDepth(borehole['buried_depth'])
@@ -126,7 +154,7 @@ def ghe_des_to_openstudio(des_dict, os_model):
 
 def gen5_des_to_openstudio(
     des_dict, os_model,
-    cooling_type='CoolingTowerVariableSpeed', heating_type='NaturalGas'
+    cooling_type='CoolingTowerVariableSpeed', heating_type='Electricity'
 ):
     """Convert a dictionary of a fifth_generation district_system to OpenStudio.
 
@@ -149,9 +177,9 @@ def gen5_des_to_openstudio(
         heating_type: Text for the equipment used to heat the loop when it requires
             supplemental heating. Choose from the options below. (Default: NaturalGas).
 
-            * NaturalGas
-            * AirSourceHeatPump
             * Electricity
+            * AirSourceHeatPump
+            * NaturalGas
             * Propane
             * PropaneGas
             * FuelOilNo1

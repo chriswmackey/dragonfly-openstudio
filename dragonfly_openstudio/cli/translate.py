@@ -6,19 +6,19 @@ import logging
 import json
 
 from ladybug.commandutil import process_content_to_output
-from ladybug.epw import EPW
 from honeybee_energy.simulation.parameter import SimulationParameter
 
 from honeybee_openstudio.openstudio import openstudio, OSModel
 from honeybee_openstudio.simulation import simulation_parameter_to_openstudio, \
     assign_epw_to_model
 from dragonfly_openstudio.writer import sys_dict_to_openstudio
+from dragonfly_openstudio.util import coincident_peak_design_days
 
 
 _logger = logging.getLogger(__name__)
 
 
-@click.group(help='Commands for translating Dragonfly JSON files to/from OSM/IDF.')
+@click.group(help='Commands for translating URBANopt systems to OSM/IDF.')
 def translate():
     pass
 
@@ -74,10 +74,8 @@ def system_to_osm(
             IDF files if they were successfully created. By default this string
             will be returned from this method.
     """
-    # initialize the OpenStudio model that will hold everything
+    # initialize the OpenStudio model and load the system parameter file
     os_model = OSModel()
-
-    # load the system parameter file to a dictionary and get the weather file
     with open(system_file) as sf:
         sys_dict = json.load(sf)
 
@@ -90,21 +88,16 @@ def system_to_osm(
             data = json.load(json_file)
         sim_par = SimulationParameter.from_dict(data)
 
-    # set two design days using the EPW (to be coordinated with coincident peak load)
+    # set design days using the coincident peak load
     epw_file = sys_dict['weather'].replace('.mos', '.epw')
     assert os.path.isfile(epw_file), 'The weather file path referenced in the ' \
         'system parameter file was not found: {}'.format(epw_file)
     if len(sim_par.sizing_parameter.design_days) == 0:
-        epw_obj = EPW(epw_file)
-        des_days = [epw_obj.approximate_design_day('WinterDesignDay'),
-                    epw_obj.approximate_design_day('SummerDesignDay')]
-        sim_par.sizing_parameter.design_days = des_days
+        sim_par.sizing_parameter.design_days = coincident_peak_design_days(sys_dict)
     assign_epw_to_model(epw_file, os_model)
 
-    # translate the simulation parameter and model to an OpenStudio Model
+    # translate the simulation parameter and the system to an OpenStudio Model
     simulation_parameter_to_openstudio(sim_par, os_model)
-
-    # translate the system parameter to OpenStudio
     os_model = sys_dict_to_openstudio(sys_dict, os_model)
     gen_files = []
 
@@ -122,4 +115,4 @@ def system_to_osm(
         workspace.save(idf, overwrite=True)
         gen_files.append(idf)
 
-    return process_content_to_output(json.dumps(gen_files, indent=4), log_file)
+    return process_content_to_output('\n'.join(gen_files), log_file)
