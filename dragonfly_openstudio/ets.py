@@ -44,10 +44,10 @@ def heat_pump_ets_to_openstudio(building_dict, hp_loop, os_model):
         chw_temp = ets_dict['chilled_water_supply_temp']
         chw_loop = building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_head)
         # add the heat pump
-        hw_hp = openstudio_model.HeatPumpWaterToWaterEquationFitCooling(os_model)
-        hw_hp.setReferenceCoefficientofPerformance(ets_dict['cop_heat_pump_heating'])
-        chw_loop.addSupplyBranchForComponent(hw_hp)
-        hp_loop.addDemandBranchForComponent(hw_hp)
+        chw_hp = openstudio_model.HeatPumpWaterToWaterEquationFitCooling(os_model)
+        chw_hp.setReferenceCoefficientofPerformance(ets_dict['cop_heat_pump_heating'])
+        chw_loop.addSupplyBranchForComponent(chw_hp)
+        hp_loop.addDemandBranchForComponent(chw_hp)
 
     # HEATING WATER LOOP
     hw_loop = None
@@ -68,10 +68,10 @@ def heat_pump_ets_to_openstudio(building_dict, hp_loop, os_model):
         shw_temp = ets_dict['hot_water_supply_temp']
         shw_loop = building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_head)
         # add supply side equipment to the heating water loop
-        hw_hp = openstudio_model.HeatPumpWaterToWaterEquationFitHeating(os_model)
-        hw_hp.setReferenceCoefficientofPerformance(ets_dict['cop_heat_pump_hot_water'])
-        hw_loop.addSupplyBranchForComponent(hw_hp)
-        hp_loop.addDemandBranchForComponent(hw_hp)
+        shw_hp = openstudio_model.HeatPumpWaterToWaterEquationFitHeating(os_model)
+        shw_hp.setReferenceCoefficientofPerformance(ets_dict['cop_heat_pump_hot_water'])
+        shw_loop.addSupplyBranchForComponent(shw_hp)
+        hp_loop.addDemandBranchForComponent(shw_hp)
 
     return chw_loop, hw_loop, shw_loop
 
@@ -100,9 +100,10 @@ def building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_pressure=None):
     # initialize the loop and set the temperature
     chw_loop = openstudio_model.PlantLoop(os_model)
     chw_loop.setName('{} Chilled Water Loop'.format(bldg_id))
-    chw_loop.setMinimumLoopTemperature(1.0)
     chw_loop.setMaximumLoopTemperature(40.0)
     chw_sizing_plant = chw_loop.sizingPlant()
+    chw_sizing_plant.setDesignLoopExitTemperature(chw_temp)
+    chw_sizing_plant.setLoopDesignTemperatureDifference(chw_temp - 1.0)
     chw_sizing_plant.setLoopType('Cooling')
     chw_temp_sch = create_constant_schedule_ruleset(
         os_model, chw_temp, schedule_type_limit='Temperature',
@@ -129,8 +130,8 @@ def building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_pressure=None):
 
     # set the flow rate schedule
     peak_flow = (abs(peak_cool) / 4184000) * 1.15  # Water DeltaT of 1C * sizing factor
-    max_cool = peak_cool * 1.15  # maximum cooling load * sizing factor
-    flow_rate = [cool_i / max_cool for cool_i in cooling]
+    max_cool = abs(peak_cool) * 1.15  # maximum cooling load * sizing factor
+    flow_rate = [abs(cool_i) / max_cool for cool_i in cooling]
     flow_sch_id = '{} Cooling Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
@@ -140,7 +141,7 @@ def building_chw_loop(bldg_id, cooling, chw_temp, os_model, pump_pressure=None):
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
     os_load.setPeakFlowRate(peak_flow)
     os_load.setName('{} Cooling Load'.format(bldg_id))
-    chw_loop.addSupplyBranchForComponent(os_load)
+    chw_loop.addDemandBranchForComponent(os_load)
 
     return chw_loop
 
@@ -159,6 +160,8 @@ def building_hw_loop(bldg_id, heating, hw_temp, os_model, pump_pressure=None):
     hw_loop = openstudio_model.PlantLoop(os_model)
     hw_loop.setName('{} Heating Water Loop'.format(bldg_id))
     hw_sizing_plant = hw_loop.sizingPlant()
+    hw_sizing_plant.setDesignLoopExitTemperature(hw_temp)
+    hw_sizing_plant.setLoopDesignTemperatureDifference(11.0)
     hw_sizing_plant.setLoopType('Heating')
     hw_temp_sch = create_constant_schedule_ruleset(
         os_model, hw_temp, schedule_type_limit='Temperature',
@@ -186,7 +189,7 @@ def building_hw_loop(bldg_id, heating, hw_temp, os_model, pump_pressure=None):
     # set the flow rate schedule
     peak_flow = (abs(peak_heat) / 4184000) * 1.25  # Water DeltaT of 1C * sizing factor
     max_heat = peak_heat * 1.25  # maximum heating load * sizing factor
-    flow_rate = [heat_i / max_heat for heat_i in heating]
+    flow_rate = [abs(heat_i) / max_heat for heat_i in heating]
     flow_sch_id = '{} Heating Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
@@ -196,7 +199,7 @@ def building_hw_loop(bldg_id, heating, hw_temp, os_model, pump_pressure=None):
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
     os_load.setPeakFlowRate(peak_flow)
     os_load.setName('{} Heating Load'.format(bldg_id))
-    hw_loop.addSupplyBranchForComponent(os_load)
+    hw_loop.addDemandBranchForComponent(os_load)
 
     return hw_loop
 
@@ -215,6 +218,8 @@ def building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_pressure=None):
     shw_loop = openstudio_model.PlantLoop(os_model)
     shw_loop.setName('{} SHW Loop'.format(bldg_id))
     shw_sizing_plant = shw_loop.sizingPlant()
+    shw_sizing_plant.setDesignLoopExitTemperature(shw_temp)
+    shw_sizing_plant.setLoopDesignTemperatureDifference(11.0)
     shw_sizing_plant.setLoopType('Heating')
     shw_temp_sch = create_constant_schedule_ruleset(
         os_model, shw_temp, schedule_type_limit='Temperature',
@@ -242,7 +247,7 @@ def building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_pressure=None):
     # set the flow rate schedule
     peak_flow = (abs(peak_heat) / 4184000) * 1.25  # Water DeltaT of 1C * sizing factor
     max_heat = peak_heat * 1.25  # maximum shw load * sizing factor
-    flow_rate = [heat_i / max_heat for heat_i in shw]
+    flow_rate = [abs(heat_i) / max_heat for heat_i in shw]
     flow_sch_id = '{} SHW Flow Sch - {}L/s'.format(bldg_id, int(peak_flow * 1000))
     flow_sch = ScheduleFixedInterval(flow_sch_id, flow_rate, fractional, timestep)
     os_flow_sch = schedule_fixed_interval_to_openstudio(flow_sch, os_model)
@@ -252,6 +257,6 @@ def building_shw_loop(bldg_id, shw, shw_temp, os_model, pump_pressure=None):
     os_load = openstudio_model.LoadProfilePlant(os_model, os_load_sch, os_flow_sch)
     os_load.setPeakFlowRate(peak_flow)
     os_load.setName('{} SHW Load'.format(bldg_id))
-    shw_loop.addSupplyBranchForComponent(os_load)
+    shw_loop.addDemandBranchForComponent(os_load)
 
     return shw_loop
